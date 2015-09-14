@@ -78,7 +78,7 @@
             this.pictureBox2.BackColor = System.Drawing.Color.White;
             this.pictureBox2.Location = new System.Drawing.Point(32, 379);
             this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(712, 256);
+            this.pictureBox2.Size = new System.Drawing.Size(712, 605);
             this.pictureBox2.TabIndex = 4;
             this.pictureBox2.TabStop = false;
             // 
@@ -95,7 +95,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1300, 705);
+            this.ClientSize = new System.Drawing.Size(1373, 996);
             this.Controls.Add(this.pictureBox3);
             this.Controls.Add(this.pictureBox2);
             this.Controls.Add(this.comboBoxAudioIF);

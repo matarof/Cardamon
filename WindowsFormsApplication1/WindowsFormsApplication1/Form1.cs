@@ -32,6 +32,8 @@ namespace WindowsFormsApplication1
         private WaveStream wavStream = null;
         private FilteredWaveStream outputStream;
         public double[] inputSampleStream;
+        public Complex[] spectrum;
+        public double[] power;
         bool isPlay;
         int melFiltNum = 20;
         int[][] mfbIndices;
@@ -53,6 +55,8 @@ namespace WindowsFormsApplication1
             voice = "C:\\Workspace\\GlottalSource2.wav";
 
             inputSampleStream = new double[streamLength];
+            spectrum = new Complex[streamLength * 2];
+            power = new double[streamLength * 2];
             //filteredSampleStream = new double[streamLength];
             //postprocessStream = new double[streamLength - faderWidth];
 
@@ -234,6 +238,34 @@ namespace WindowsFormsApplication1
             int j;
         }
 
+
+        private void calcSpectrum(double[] data)  //インパルス応答計算
+        {
+
+
+            for (int i = 0; i < data.Length; i++)  //順対称
+            {
+                spectrum[i] = data[i];
+                spectrum[spectrum.Length - 1 - i] = data[i];                
+            }
+
+            Fourier.Forward(spectrum);
+
+            for(int i = 0; i < power.Length; i++)
+            {
+                power[i] = spectrum[i].MagnitudeSquared();
+            }
+
+            //遅延あり
+            //Complex[] wk_array = new Complex[data.Length];
+            //Array.Copy(spectrum, 0, wk_array, 0, data.Length);
+            //Array.Copy(wk_array, 0, spectrum, data.Length, data.Length);
+            //Array.Reverse(wk_array);
+            //Array.Copy(wk_array, 0, spectrum, 0, data.Length);
+
+        }
+
+
         private int iMel(double m)
         {
             int f = (int)(1000 * (Math.Exp(m * log2 / 1000) - 1));
@@ -377,16 +409,16 @@ namespace WindowsFormsApplication1
             {
                 Pen pen1 = new Pen(Color.Crimson);
 
-                if (radioButton2.Checked)
-                {
-                    hsvColor.H = hue_ct;
-                    pen1.Color = hsvColor.ToRGB();
-                    hue_ct += 5;
-                    if (hue_ct == 360)
-                    {
-                        hue_ct = 0;
-                    }
-                }
+                //if (radioButton2.Checked)
+                //{
+                //    hsvColor.H = hue_ct;
+                //    pen1.Color = hsvColor.ToRGB();
+                //    hue_ct += 5;
+                //    if (hue_ct == 360)
+                //    {
+                //        hue_ct = 0;
+                //    }
+                //}
 
 
                 for (int i = 2; i < data.GetLength(0); i++)
@@ -394,9 +426,9 @@ namespace WindowsFormsApplication1
                     g.DrawLine(
                         pen1,
                         (int)((i - 1) * 2),
-                        (int)(Math.Log10(data[i - 1]) * -100 + 200),
+                        (int)(Math.Log10(data[i - 1]) * -10 + 200),
                         (int)(i * 2),
-                        (int)(Math.Log10(data[i]) * -100 + 200)
+                        (int)(Math.Log10(data[i]) * -10 + 200)
                         );
                 }
 
@@ -426,10 +458,12 @@ namespace WindowsFormsApplication1
 
         private void SystemUpdate()
         {
+
+            calcSpectrum(inputSampleStream);
             g1.Clear(pictureBox1.BackColor);
             waveformDraw(g1, inputSampleStream);
             pictureBox1.Refresh();
-
+            spectrumDraw(g2, power);
 
 
 
