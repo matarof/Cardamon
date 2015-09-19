@@ -54,14 +54,16 @@ namespace WindowsFormsApplication1
             InitializeComponent();
             voice = "C:\\Workspace\\GlottalSource2.wav";
 
+            df = 10;
             inputSampleStream = new double[streamLength];
             spectrum = new Complex[streamLength * 2];
             power = new double[streamLength * 2];
             //filteredSampleStream = new double[streamLength];
             //postprocessStream = new double[streamLength - faderWidth];
-
-
-
+            initTBank(melFiltNum, 6000);
+            melSpectrum = new double[melFiltNum];
+            MFCC = new double[melFiltNum];
+            
             Bitmap bmp1 = new Bitmap(pictureBox1.Size.Width, pictureBox1.Size.Height);
             pictureBox1.Image = bmp1;
             g1 = Graphics.FromImage(pictureBox1.Image);
@@ -464,7 +466,8 @@ namespace WindowsFormsApplication1
             waveformDraw(g1, inputSampleStream);
             pictureBox1.Refresh();
             spectrumDraw(g2, power);
-
+            melFilter(power);
+            MFCC = dct_ii(melSpectrum);
 
 
         }
