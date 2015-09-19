@@ -24,8 +24,12 @@ namespace WindowsFormsApplication1
     {
 
         private string voice;
-
         int df;  //周波数応答関数計算ステップ(Hz)
+        int f0 = 10;  //スペクトラム計算開始周波数
+        int f1;  //スペクトラム計算終了周波数 サンプリング周波数で規定(コンストラクタで設定)
+
+        public int sampleRate;
+
         int audioLatency = 50;
         private int streamLength = 30000;   //初期値29650
         private IWavePlayer WaveOutDevice = null;
@@ -55,9 +59,12 @@ namespace WindowsFormsApplication1
             voice = "C:\\Workspace\\GlottalSource2.wav";
 
             df = 10;
+            sampleRate = 44100;
+            f1 = sampleRate / 2;
+
             inputSampleStream = new double[streamLength];
-            spectrum = new Complex[streamLength * 2];
-            power = new double[streamLength * 2];
+            spectrum = new Complex[(int)f1 / df * 2];
+            power = new double[(int)f1 / df * 2];
             //filteredSampleStream = new double[streamLength];
             //postprocessStream = new double[streamLength - faderWidth];
             initTBank(melFiltNum, 6000);
@@ -245,7 +252,7 @@ namespace WindowsFormsApplication1
         {
 
 
-            for (int i = 0; i < data.Length; i++)  //順対称
+            for (int i = 0; i < spectrum.Length / 2 ; i++)  //順対称
             {
                 spectrum[i] = data[i];
                 spectrum[spectrum.Length - 1 - i] = data[i];                
@@ -407,30 +414,20 @@ namespace WindowsFormsApplication1
                     );
             }
     }
+
+            //TODO スペクトラム表示スケールの最適化
             private void spectrumDraw(Graphics g, double[] data)
             {
                 Pen pen1 = new Pen(Color.Crimson);
 
-                //if (radioButton2.Checked)
-                //{
-                //    hsvColor.H = hue_ct;
-                //    pen1.Color = hsvColor.ToRGB();
-                //    hue_ct += 5;
-                //    if (hue_ct == 360)
-                //    {
-                //        hue_ct = 0;
-                //    }
-                //}
-
-
-                for (int i = 2; i < data.GetLength(0); i++)
+                for (int i = 2; i < data.GetLength(0) / 15; i++)
                 {
                     g.DrawLine(
                         pen1,
                         (int)((i - 1) * 2),
-                        (int)(Math.Log10(data[i - 1]) * -10 + 200),
+                        (int)(Math.Log10(data[(i - 1) *15]) * -10 + 200),
                         (int)(i * 2),
-                        (int)(Math.Log10(data[i]) * -10 + 200)
+                        (int)(Math.Log10(data[i *15]) * -10 + 200)
                         );
                 }
 
