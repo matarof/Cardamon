@@ -46,6 +46,13 @@ namespace WindowsFormsApplication1
         double[][] tBank;
         public double[] melSpectrum;
         public double[] MFCC;
+        public double[] n1MelSpectrum;
+        public double[] n1MFCC;
+        public double[] n2MelSpectrum;
+        public double[] n2MFCC;
+
+        public List<FilterbankOutput> MFCCDataList;
+
 
         double log2 = Math.Log(2);
 
@@ -66,8 +73,8 @@ namespace WindowsFormsApplication1
 
             df = 10;
             sampleRate = 44100;
-            
-            spectrum = new Complex[(int) sampleRate / df];
+
+            spectrum = new Complex[(int)sampleRate / df];
             nPower = new double[(int)sampleRate / df / 2];
             //filteredSampleStream = new double[streamLength];
             //postprocessStream = new double[streamLength - faderWidth];
@@ -78,7 +85,11 @@ namespace WindowsFormsApplication1
             initTBank(melFiltNum, 6000);
             melSpectrum = new double[melFiltNum];
             MFCC = new double[melFiltNum];
-            
+            n1MelSpectrum = new double[melFiltNum];
+            n1MFCC = new double[melFiltNum];
+            n2MelSpectrum = new double[melFiltNum];
+            n2MFCC = new double[melFiltNum];
+
             Bitmap bmp1 = new Bitmap(pictureBox1.Size.Width, pictureBox1.Size.Height);
             pictureBox1.Image = bmp1;
             g1 = Graphics.FromImage(pictureBox1.Image);
@@ -97,7 +108,7 @@ namespace WindowsFormsApplication1
             melFiltNum = 20;
             isPlay = false;
 
-            
+            MFCCDataList = new List<FilterbankOutput> { };
         }
 
         private void InitializeWasapiControls()
@@ -119,8 +130,8 @@ namespace WindowsFormsApplication1
 
         private IWavePlayer CreateDevice(int id)
         {
-                    WasapiOut outputDevice = new WasapiOut(
-                (MMDevice)comboBoxAudioIF.SelectedValue, AudioClientShareMode.Shared, false, audioLatency);
+            WasapiOut outputDevice = new WasapiOut(
+        (MMDevice)comboBoxAudioIF.SelectedValue, AudioClientShareMode.Shared, false, audioLatency);
             return outputDevice as IWavePlayer;
 
         }
@@ -165,7 +176,7 @@ namespace WindowsFormsApplication1
                 readOffset = 0; //////////読み出し開始位置 3100
 
 
-                for (int i = 0; i < out_Array.Length-1; i++)　///////////////////////////////////// ゼロクロス位置強制
+                for (int i = 0; i < out_Array.Length - 1; i++)　///////////////////////////////////// ゼロクロス位置強制
                 {
                     if ((out_Array[i + readOffset] < 0) && (out_Array[i + readOffset + 1] > 0))
                     {
@@ -200,7 +211,6 @@ namespace WindowsFormsApplication1
 
             public double Gain { get; set; }
 
-
             public int Read(float[] buffer, int offset, int count)
             {
                 int outIndex = offset;
@@ -218,8 +228,6 @@ namespace WindowsFormsApplication1
                 }
                 return count;
             }
-
-
         }
 
 
@@ -238,7 +246,7 @@ namespace WindowsFormsApplication1
                     this.voice = openFileDialog1.FileName;
                 }
                 this.textBoxVoicefile.Text = this.voice;
-                
+
                 openFileDialog1.Dispose();
             }
 
@@ -278,16 +286,16 @@ namespace WindowsFormsApplication1
             //    spectrum[spectrum.Length - 1 - i] = data[i];
             //}
 
-            for (int i = 0; i < window.Length; i++)  
+            for (int i = 0; i < window.Length; i++)
             {
                 spectrum[i] = data[i + offset] * window[i];
             }
 
             Fourier.Forward(spectrum, FourierOptions.NoScaling);   //defaultはsart(n)で正規化のでここでは正規化しない
 
-            for(int i = 0; i < nPower.Length; i++)
+            for (int i = 0; i < nPower.Length; i++)
             {
-                nPower[i] = Math.Pow(spectrum[i].Magnitude / (spectrum.Length/2), 2) / powerCorrectionFactor;
+                nPower[i] = Math.Pow(spectrum[i].Magnitude / (spectrum.Length / 2), 2) / powerCorrectionFactor;
             }
 
         }
@@ -355,19 +363,31 @@ namespace WindowsFormsApplication1
 
         public void melFilter(double[] data)
         {
+            double[] a = new double[melFiltNum];
 
             Parallel.For(0, melFiltNum, i =>
             {
-                melSpectrum[i] = 0;
+                a[i] = 0;
 
                 for (int j = 0; j < mfbIndices[i][0]; j++)
                 {
-                    melSpectrum[i] += data[mfbIndices[i][1] + j] * tBank[i][j];
+                    a[i] += data[mfbIndices[i][1] + j] * tBank[i][j];
 
                 }
-
             });
+
+
+            double b = a.Sum();
+            double c = a.Max();
+            Parallel.For(0, melFiltNum, i =>
+            {
+                melSpectrum[i] = Math.Log10(a[i]);
+                n1MelSpectrum[i] = Math.Log10(a[i] / b); //全体のパワーで正規化
+                n2MelSpectrum[i] = Math.Log10(a[i] / c); //最大値を1として正規化
+            });
+
         }
+
 
 
         public double[] dct_ii(double[] data)  //////////////////////////////////////////DCT-II bruteforce
@@ -400,7 +420,7 @@ namespace WindowsFormsApplication1
                 window[ww - 1 - i] = window[i];
             }
 
-            foreach(double n in window)
+            foreach (double n in window)
             {
                 powerCorrectionFactor += n;
             }
@@ -409,7 +429,7 @@ namespace WindowsFormsApplication1
 
 
 
-/// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 描画メソッド
+        /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 描画メソッド
 
 
         private void waveformDraw(Graphics g, double[] data)
@@ -428,9 +448,9 @@ namespace WindowsFormsApplication1
                 g.DrawLine(
                     pen1,
                     (int)(i - 1),
-                    (int)(dh - data[i * dw ] * dh),
+                    (int)(dh - data[i * dw] * dh),
                     (int)(i),
-                    (int)(dh - data[(i + 1) * dw ] * dh)
+                    (int)(dh - data[(i + 1) * dw] * dh)
                     );
             }
         }
@@ -450,13 +470,13 @@ namespace WindowsFormsApplication1
                     );
             }
 
-            
+
             Pen pen2 = new Pen(Color.LightGray);
             for (double i = 1; i > 0.1; i -= 0.2)
             {
                 g.DrawLine(pen2, 0, (int)(Math.Log10(i) * mul + 50), pictureBox2.Width, (int)(Math.Log10(i) * mul + 50));
             }
-            for (double i = 0.1 ; i > 0.01; i -= 0.02)
+            for (double i = 0.1; i > 0.01; i -= 0.02)
             {
                 g.DrawLine(pen2, 0, (int)(Math.Log10(i) * mul + 50), pictureBox2.Width, (int)(Math.Log10(i) * mul + 50));
             }
@@ -483,16 +503,16 @@ namespace WindowsFormsApplication1
 
         private void fbParamDraw(Graphics g, double[] data1, double[] data2)
         {
-            SolidBrush br1 = new SolidBrush(Color.MediumBlue);
+            SolidBrush br1 = new SolidBrush(Color.Crimson);
             SolidBrush br2 = new SolidBrush(Color.Black); ;
 
             for (int i = 0; i < data1.Length; i++)
             {
-                g.FillRectangle(br1, 25 + i * 20, (int)(pictureBox3.Height - 10 - data1[i] * 10000), 20, (int)(data1[i] * 10000));
-                g.FillRectangle(br2, 25 + i * 20, (int)((pictureBox3.Height - 10 - data2[i] * 5000) / 5), 20, 3);
+                g.FillRectangle(br1, 25 + i * 20, (int)(pictureBox3.Height - 300 - data1[i] * 50), 20, 3);
+                g.FillRectangle(br2, 25 + i * 20, (int)(pictureBox3.Height - 100 - data2[i] * 20), 20, 3);
 
             }
-            
+
         }
 
         private void filterBankDraw(Graphics g, int[][] indices, double[][] data)  //インデックスあり
@@ -530,12 +550,14 @@ namespace WindowsFormsApplication1
 
             melFilter(nPower);
             MFCC = dct_ii(melSpectrum);
+            n1MFCC = dct_ii(n1MelSpectrum);
+            n2MFCC = dct_ii(n2MelSpectrum);
             g3.Clear(pictureBox3.BackColor);
             fbParamDraw(g3, melSpectrum, MFCC);
             pictureBox3.Refresh();
         }
-        
-        
+
+
         #region User Interface
 
         private void pictureBox1_MouseClick(object sender, MouseEventArgs e)
@@ -571,7 +593,7 @@ namespace WindowsFormsApplication1
                 ClearAudioDevice();
                 WaveOutDevice = CreateDevice(comboBoxAudioIF.SelectedIndex);
                 //outputStream = new FilteredWaveStream(sampleRate, filteredSampleStream);
-                outputStream = new FilteredWaveStream(sampleRate,inputSampleStream);
+                outputStream = new FilteredWaveStream(sampleRate, inputSampleStream);
                 WaveOutDevice.Init(new SampleToWaveProvider(outputStream as ISampleProvider));
 
                 WaveOutDevice.Play();
@@ -639,6 +661,88 @@ namespace WindowsFormsApplication1
             od.fb19 = melSpectrum[18];
             od.fb20 = melSpectrum[19];
 
+            od.n1m1 = n1MFCC[1];
+            od.n1m2 = n1MFCC[2];
+            od.n1m3 = n1MFCC[3];
+            od.n1m4 = n1MFCC[4];
+            od.n1m5 = n1MFCC[5];
+            od.n1m6 = n1MFCC[6];
+            od.n1m7 = n1MFCC[7];
+            od.n1m8 = n1MFCC[8];
+            od.n1m9 = n1MFCC[9];
+            od.n1m10 = n1MFCC[10];
+            od.n1m11 = n1MFCC[11];
+            od.n1m12 = n1MFCC[12];
+            od.n1m13 = n1MFCC[13];
+            od.n1m14 = n1MFCC[14];
+            od.n1m15 = n1MFCC[15];
+            od.n1m16 = n1MFCC[16];
+            od.n1m17 = n1MFCC[17];
+            od.n1m18 = n1MFCC[18];
+            od.n1m19 = n1MFCC[19];
+
+            od.n1fb1 = n1MelSpectrum[0];
+            od.n1fb2 = n1MelSpectrum[1];
+            od.n1fb3 = n1MelSpectrum[2];
+            od.n1fb4 = n1MelSpectrum[3];
+            od.n1fb5 = n1MelSpectrum[4];
+            od.n1fb6 = n1MelSpectrum[5];
+            od.n1fb7 = n1MelSpectrum[6];
+            od.n1fb8 = n1MelSpectrum[7];
+            od.n1fb9 = n1MelSpectrum[8];
+            od.n1fb10 = n1MelSpectrum[9];
+            od.n1fb11 = n1MelSpectrum[10];
+            od.n1fb12 = n1MelSpectrum[11];
+            od.n1fb13 = n1MelSpectrum[12];
+            od.n1fb14 = n1MelSpectrum[13];
+            od.n1fb15 = n1MelSpectrum[14];
+            od.n1fb16 = n1MelSpectrum[15];
+            od.n1fb17 = n1MelSpectrum[16];
+            od.n1fb18 = n1MelSpectrum[17];
+            od.n1fb19 = n1MelSpectrum[18];
+            od.n1fb20 = n1MelSpectrum[19];
+
+            od.n2m1 = n2MFCC[1];
+            od.n2m2 = n2MFCC[2];
+            od.n2m3 = n2MFCC[3];
+            od.n2m4 = n2MFCC[4];
+            od.n2m5 = n2MFCC[5];
+            od.n2m6 = n2MFCC[6];
+            od.n2m7 = n2MFCC[7];
+            od.n2m8 = n2MFCC[8];
+            od.n2m9 = n2MFCC[9];
+            od.n2m10 = n2MFCC[10];
+            od.n2m11 = n2MFCC[11];
+            od.n2m12 = n2MFCC[12];
+            od.n2m13 = n2MFCC[13];
+            od.n2m14 = n2MFCC[14];
+            od.n2m15 = n2MFCC[15];
+            od.n2m16 = n2MFCC[16];
+            od.n2m17 = n2MFCC[17];
+            od.n2m18 = n2MFCC[18];
+            od.n2m19 = n2MFCC[19];
+
+            od.n2fb1 = n2MelSpectrum[0];
+            od.n2fb2 = n2MelSpectrum[1];
+            od.n2fb3 = n2MelSpectrum[2];
+            od.n2fb4 = n2MelSpectrum[3];
+            od.n2fb5 = n2MelSpectrum[4];
+            od.n2fb6 = n2MelSpectrum[5];
+            od.n2fb7 = n2MelSpectrum[6];
+            od.n2fb8 = n2MelSpectrum[7];
+            od.n2fb9 = n2MelSpectrum[8];
+            od.n2fb10 = n2MelSpectrum[9];
+            od.n2fb11 = n2MelSpectrum[10];
+            od.n2fb12 = n2MelSpectrum[11];
+            od.n2fb13 = n2MelSpectrum[12];
+            od.n2fb14 = n2MelSpectrum[13];
+            od.n2fb15 = n2MelSpectrum[14];
+            od.n2fb16 = n2MelSpectrum[15];
+            od.n2fb17 = n2MelSpectrum[16];
+            od.n2fb18 = n2MelSpectrum[17];
+            od.n2fb19 = n2MelSpectrum[18];
+            od.n2fb20 = n2MelSpectrum[19];
+
             if (checkBox1.Checked == true) { od.isHotPotato = 1; }
             else od.isHotPotato = 0;
             od.name = voice;
@@ -650,32 +754,45 @@ namespace WindowsFormsApplication1
             sw.Close();
 
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            string dataFile;
+            FilterbankOutput ad;
+
+            OpenFileDialog openFileDialog2 = new OpenFileDialog();
+            openFileDialog2.Filter = "xmlファイル|*.xml";
+            openFileDialog2.Title = "Select a MFCC Data File";
+
+            if (openFileDialog2.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                dataFile = openFileDialog2.FileName;
+            }
+            else return;
+
+            openFileDialog2.Dispose();
+
+            System.Xml.Serialization.XmlSerializer serializer = new System.Xml.Serialization.XmlSerializer(typeof(FilterbankOutput));
+            System.IO.StreamReader sr = new System.IO.StreamReader(dataFile, new System.Text.UTF8Encoding(false));
+            ad = (FilterbankOutput)serializer.Deserialize(sr);
+            sr.Close();
+
+            MFCCDataList.Add(ad);
+
+            System.Xml.Serialization.XmlSerializer serializer1 = new System.Xml.Serialization.XmlSerializer(typeof(List<FilterbankOutput>));
+            System.IO.StreamWriter sw = new System.IO.StreamWriter(String.Format(@"D:\Workspace\{0}.xml", this.textBoxCombindFile.Text), false, new System.Text.UTF8Encoding(false));
+            serializer1.Serialize(sw, MFCCDataList);
+            sw.Close();
+
+
+
+        }
     }
 
     public class FilterbankOutput
     {
         public string name { get; set; }
         public int isHotPotato { get; set; }
-
-        public double m1 { get; set; }
-        public double m2 { get; set; }
-        public double m3 { get; set; }
-        public double m4 { get; set; }
-        public double m5 { get; set; }
-        public double m6 { get; set; }
-        public double m7 { get; set; }
-        public double m8 { get; set; }
-        public double m9 { get; set; }
-        public double m10 { get; set; }
-        public double m11 { get; set; }
-        public double m12 { get; set; }
-        public double m13 { get; set; }
-        public double m14 { get; set; }
-        public double m15 { get; set; }
-        public double m16 { get; set; }
-        public double m17 { get; set; }
-        public double m18 { get; set; }
-        public double m19 { get; set; }
 
         public double fb1 { get; set; }
         public double fb2 { get; set; }
@@ -697,6 +814,109 @@ namespace WindowsFormsApplication1
         public double fb18 { get; set; }
         public double fb19 { get; set; }
         public double fb20 { get; set; }
+
+        public double m1 { get; set; }
+        public double m2 { get; set; }
+        public double m3 { get; set; }
+        public double m4 { get; set; }
+        public double m5 { get; set; }
+        public double m6 { get; set; }
+        public double m7 { get; set; }
+        public double m8 { get; set; }
+        public double m9 { get; set; }
+        public double m10 { get; set; }
+        public double m11 { get; set; }
+        public double m12 { get; set; }
+        public double m13 { get; set; }
+        public double m14 { get; set; }
+        public double m15 { get; set; }
+        public double m16 { get; set; }
+        public double m17 { get; set; }
+        public double m18 { get; set; }
+        public double m19 { get; set; }
+
+        public double n1fb1 { get; set; }
+        public double n1fb2 { get; set; }
+        public double n1fb3 { get; set; }
+        public double n1fb4 { get; set; }
+        public double n1fb5 { get; set; }
+        public double n1fb6 { get; set; }
+        public double n1fb7 { get; set; }
+        public double n1fb8 { get; set; }
+        public double n1fb9 { get; set; }
+        public double n1fb10 { get; set; }
+        public double n1fb11 { get; set; }
+        public double n1fb12 { get; set; }
+        public double n1fb13 { get; set; }
+        public double n1fb14 { get; set; }
+        public double n1fb15 { get; set; }
+        public double n1fb16 { get; set; }
+        public double n1fb17 { get; set; }
+        public double n1fb18 { get; set; }
+        public double n1fb19 { get; set; }
+        public double n1fb20 { get; set; }
+
+        public double n1m1 { get; set; }
+        public double n1m2 { get; set; }
+        public double n1m3 { get; set; }
+        public double n1m4 { get; set; }
+        public double n1m5 { get; set; }
+        public double n1m6 { get; set; }
+        public double n1m7 { get; set; }
+        public double n1m8 { get; set; }
+        public double n1m9 { get; set; }
+        public double n1m10 { get; set; }
+        public double n1m11 { get; set; }
+        public double n1m12 { get; set; }
+        public double n1m13 { get; set; }
+        public double n1m14 { get; set; }
+        public double n1m15 { get; set; }
+        public double n1m16 { get; set; }
+        public double n1m17 { get; set; }
+        public double n1m18 { get; set; }
+        public double n1m19 { get; set; }
+
+        public double n2fb1 { get; set; }
+        public double n2fb2 { get; set; }
+        public double n2fb3 { get; set; }
+        public double n2fb4 { get; set; }
+        public double n2fb5 { get; set; }
+        public double n2fb6 { get; set; }
+        public double n2fb7 { get; set; }
+        public double n2fb8 { get; set; }
+        public double n2fb9 { get; set; }
+        public double n2fb10 { get; set; }
+        public double n2fb11 { get; set; }
+        public double n2fb12 { get; set; }
+        public double n2fb13 { get; set; }
+        public double n2fb14 { get; set; }
+        public double n2fb15 { get; set; }
+        public double n2fb16 { get; set; }
+        public double n2fb17 { get; set; }
+        public double n2fb18 { get; set; }
+        public double n2fb19 { get; set; }
+        public double n2fb20 { get; set; }
+
+        public double n2m1 { get; set; }
+        public double n2m2 { get; set; }
+        public double n2m3 { get; set; }
+        public double n2m4 { get; set; }
+        public double n2m5 { get; set; }
+        public double n2m6 { get; set; }
+        public double n2m7 { get; set; }
+        public double n2m8 { get; set; }
+        public double n2m9 { get; set; }
+        public double n2m10 { get; set; }
+        public double n2m11 { get; set; }
+        public double n2m12 { get; set; }
+        public double n2m13 { get; set; }
+        public double n2m14 { get; set; }
+        public double n2m15 { get; set; }
+        public double n2m16 { get; set; }
+        public double n2m17 { get; set; }
+        public double n2m18 { get; set; }
+        public double n2m19 { get; set; }
+
     }
 
 }

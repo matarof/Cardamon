@@ -36,6 +36,8 @@
             this.comboBoxAudioIF = new System.Windows.Forms.ComboBox();
             this.button2 = new System.Windows.Forms.Button();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.button3 = new System.Windows.Forms.Button();
+            this.textBoxCombindFile = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
@@ -96,11 +98,11 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(1226, 238);
+            this.button2.Location = new System.Drawing.Point(1226, 236);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(117, 42);
             this.button2.TabIndex = 6;
-            this.button2.Text = "button2";
+            this.button2.Text = "Make MFCC File";
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
@@ -114,11 +116,30 @@
             this.checkBox1.Text = "checkBox1";
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(1226, 358);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(117, 42);
+            this.button3.TabIndex = 8;
+            this.button3.Text = "MFCC File Combiner";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.button3_Click);
+            // 
+            // textBoxCombindFile
+            // 
+            this.textBoxCombindFile.Location = new System.Drawing.Point(1226, 406);
+            this.textBoxCombindFile.Name = "textBoxCombindFile";
+            this.textBoxCombindFile.Size = new System.Drawing.Size(117, 19);
+            this.textBoxCombindFile.TabIndex = 9;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1379, 784);
+            this.Controls.Add(this.textBoxCombindFile);
+            this.Controls.Add(this.button3);
             this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.pictureBox3);
@@ -148,6 +169,8 @@
         private System.Windows.Forms.ComboBox comboBoxAudioIF;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.CheckBox checkBox1;
+        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.TextBox textBoxCombindFile;
     }
 }
 
