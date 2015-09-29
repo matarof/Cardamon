@@ -286,7 +286,6 @@ namespace WindowsFormsApplication1
             {
                 inputSampleStream[i] /= max;
             }
-
         }
 
         private void calcSpectrum(double[] data)
@@ -388,23 +387,46 @@ namespace WindowsFormsApplication1
 
         }
 
+        //public double[] dct_ii(double[] data)  //////////////////////////////////////////DCT-II bruteforce
+        //{
+        //    double[] c = new double[data.Length];
+
+        //    for (int i = 1; i < data.Length; i++)
+        //    {
+        //        double a = Math.PI * i / data.Length;
+
+        //        Parallel.For(1, data.Length, j =>
+        //        {
+        //            c[i] += data[j] * Math.Cos(a * (j + 0.5));
+        //        });
+        //    }
+
+        //    return c;
+        //}
         public double[] dct_ii(double[] data)  //////////////////////////////////////////DCT-II bruteforce
         {
             double[] c = new double[data.Length];
+            double b = Math.Sqrt(2.0 / data.Length);
+            double b0 = Math.Sqrt(data.Length);
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                c[0] += data[i] / b0;
+            }
 
             for (int i = 1; i < data.Length; i++)
             {
                 double a = Math.PI * i / data.Length;
 
+
                 Parallel.For(1, data.Length, j =>
                 {
-                    c[i] += data[j] * Math.Cos(a * (j + 0.5));
+                    c[i] += data[j] * b * Math.Cos(a * (j + 0.5));
                 });
             }
 
             return c;
         }
-
         private void setWindow(int ww)
         {
             Array.Clear(this.window, 0, window.Length);
