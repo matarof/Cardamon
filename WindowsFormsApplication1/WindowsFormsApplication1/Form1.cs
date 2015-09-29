@@ -53,13 +53,10 @@ namespace WindowsFormsApplication1
 
         public List<FilterbankOutput> MFCCDataList;
 
-
         double log2 = Math.Log(2);
 
         int dw;
         int offset;
-
-
 
         Graphics g1;
         Graphics g2;
@@ -76,8 +73,6 @@ namespace WindowsFormsApplication1
 
             spectrum = new Complex[(int)sampleRate / df];
             nPower = new double[(int)sampleRate / df / 2];
-            //filteredSampleStream = new double[streamLength];
-            //postprocessStream = new double[streamLength - faderWidth];
 
             window = new double[(int)sampleRate / df];
             offset = 0;
@@ -102,7 +97,7 @@ namespace WindowsFormsApplication1
             pictureBox3.Image = bmp3;
             g3 = Graphics.FromImage(pictureBox3.Image);
 
-            setWaveFile1();
+            setWaveFile();
             SystemUpdate();
 
             melFiltNum = 20;
@@ -111,6 +106,7 @@ namespace WindowsFormsApplication1
             MFCCDataList = new List<FilterbankOutput> { };
         }
 
+        #region NAUDIO WASAPI
         private void InitializeWasapiControls()
         {
             var enumerator = new MMDeviceEnumerator();
@@ -173,8 +169,7 @@ namespace WindowsFormsApplication1
                 waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
                 Gain = 1;
                 out_Array = data;
-                readOffset = 0; //////////読み出し開始位置 3100
-
+                readOffset = 0;
 
                 for (int i = 0; i < out_Array.Length - 1; i++)　///////////////////////////////////// ゼロクロス位置強制
                 {
@@ -230,10 +225,28 @@ namespace WindowsFormsApplication1
             }
         }
 
-
-        private void setWaveFile1()
+        private void play()
         {
+            if (isPlay == false)
+            {
+                ClearAudioDevice();
+                WaveOutDevice = CreateDevice(comboBoxAudioIF.SelectedIndex);
+                outputStream = new FilteredWaveStream(sampleRate, inputSampleStream);
+                WaveOutDevice.Init(new SampleToWaveProvider(outputStream as ISampleProvider));
 
+                WaveOutDevice.Play();
+                isPlay = true;
+            }
+            else
+            {
+                ClearAudioDevice();
+                isPlay = false;
+            }
+        }
+        #endregion
+
+        private void setWaveFile()
+        {
             FileInfo fi = new FileInfo(this.voice);
             if (!fi.Exists)
             {
@@ -278,17 +291,11 @@ namespace WindowsFormsApplication1
 
         private void calcSpectrum(double[] data)
         {
-
-
-            //for (int i = 0; i < spectrum.Length / 2; i++)  //順対称
-            //{
-            //    spectrum[i] = data[i];
-            //    spectrum[spectrum.Length - 1 - i] = data[i];
-            //}
+            var pre_emp = 0.97;
 
             for (int i = 0; i < window.Length; i++)
             {
-                spectrum[i] = data[i + offset] * window[i];
+                spectrum[i] = (data[i + offset + 1]  - pre_emp * (data[i + offset]))* window[i];  //プリエンファシス+窓掛け
             }
 
             Fourier.Forward(spectrum, FourierOptions.NoScaling);   //defaultはsart(n)で正規化のでここでは正規化しない
@@ -299,7 +306,6 @@ namespace WindowsFormsApplication1
             }
 
         }
-
 
         private int iMel(double m)
         {
@@ -315,7 +321,6 @@ namespace WindowsFormsApplication1
 
         private void initTBank(int mn, int maxf)  //mnフィルタバンク数　maxf フィルタバンク最大周波数
         {
-
             double maxm = fMel(maxf);
             double melFiltWidth = maxm / (melFiltNum / 2 + 0.5);
 
@@ -332,17 +337,13 @@ namespace WindowsFormsApplication1
 
                 mfbIndices[i] = new int[] { fbi - fai + 1, fai, fbi };
 
-
                 tBank[i] = new double[mfbIndices[i][0]];
                 for (int j = 0; j < tBank[i].Length; j++)
                 {
                     tBank[i][j] = bartlett(j, mfbIndices[i][0]);
 
                 }
-
-
             }
-
         }
 
         private double bartlett(int n, int l)
@@ -376,7 +377,6 @@ namespace WindowsFormsApplication1
                 }
             });
 
-
             double b = a.Sum();
             double c = a.Max();
             Parallel.For(0, melFiltNum, i =>
@@ -387,8 +387,6 @@ namespace WindowsFormsApplication1
             });
 
         }
-
-
 
         public double[] dct_ii(double[] data)  //////////////////////////////////////////DCT-II bruteforce
         {
@@ -409,14 +407,12 @@ namespace WindowsFormsApplication1
 
         private void setWindow(int ww)
         {
-
             Array.Clear(this.window, 0, window.Length);
             double d = (2 * (Math.PI)) / (double)ww;
 
             for (int i = 0; i < ww / 2; i++)
             {
-                //window[i] = 0.54 - 0.46 * Math.Cos(2 * (Math.PI) * d * i);  // hamming window
-                window[i] = 0.54 - 0.46 * Math.Cos(d * i);   //折り返して最適化
+                window[i] = 0.54 - 0.46 * Math.Cos(d * i);   //// hamming window 折り返して最適化
                 window[ww - 1 - i] = window[i];
             }
 
@@ -427,10 +423,7 @@ namespace WindowsFormsApplication1
             powerCorrectionFactor /= window.Length;
         }
 
-
-
-        /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 描画メソッド
-
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 描画メソッド
 
         private void waveformDraw(Graphics g, double[] data)
         {
@@ -438,10 +431,8 @@ namespace WindowsFormsApplication1
 
             g.FillRectangle(Brushes.Aqua, offset / dw, 0, spectrum.Length / dw, pictureBox1.Height - 1);
 
-
             int dh = (pictureBox1.Height - 1) / 2;
             Pen pen1 = new Pen(Color.Black);
-
 
             for (int i = 2; i < 800; i++)
             {
@@ -469,7 +460,6 @@ namespace WindowsFormsApplication1
                     (int)(Math.Log10(data[i]) * mul + 50)
                     );
             }
-
 
             Pen pen2 = new Pen(Color.LightGray);
             for (double i = 1; i > 0.1; i -= 0.2)
@@ -512,7 +502,6 @@ namespace WindowsFormsApplication1
                 g.FillRectangle(br2, 25 + i * 20, (int)(pictureBox3.Height - 100 - data2[i] * 20), 20, 3);
 
             }
-
         }
 
         private void filterBankDraw(Graphics g, int[][] indices, double[][] data)  //インデックスあり
@@ -531,9 +520,7 @@ namespace WindowsFormsApplication1
                         (int)((data[j][i + 1]) * -100 + 200)
                         );
                 }
-
             }
-
         }
 
         private void SystemUpdate()
@@ -557,7 +544,6 @@ namespace WindowsFormsApplication1
             pictureBox3.Refresh();
         }
 
-
         #region User Interface
 
         private void pictureBox1_MouseClick(object sender, MouseEventArgs e)
@@ -565,9 +551,8 @@ namespace WindowsFormsApplication1
             offset = (int)(e.X * dw);
             SystemUpdate();
             play();
-
-
         }
+
         private void button1_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog1 = new OpenFileDialog();
@@ -579,41 +564,16 @@ namespace WindowsFormsApplication1
                 this.voice = openFileDialog1.FileName;
             }
             this.textBoxVoicefile.Text = this.voice;
-            setWaveFile1();
+            setWaveFile();
             offset = 0;
             SystemUpdate();
 
             openFileDialog1.Dispose();
         }
 
-        private void play()
-        {
-            if (isPlay == false)
-            {
-                ClearAudioDevice();
-                WaveOutDevice = CreateDevice(comboBoxAudioIF.SelectedIndex);
-                //outputStream = new FilteredWaveStream(sampleRate, filteredSampleStream);
-                outputStream = new FilteredWaveStream(sampleRate, inputSampleStream);
-                WaveOutDevice.Init(new SampleToWaveProvider(outputStream as ISampleProvider));
-
-                WaveOutDevice.Play();
-                isPlay = true;
-            }
-            else
-            {
-                ClearAudioDevice();
-                isPlay = false;
-            }
-
-        }
-
-
-        #endregion
-
         private void Form1_Load(object sender, EventArgs e)
         {
             this.textBoxVoicefile.Text = this.voice;
-
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -747,12 +707,10 @@ namespace WindowsFormsApplication1
             else od.isHotPotato = 0;
             od.name = voice;
 
-
             System.Xml.Serialization.XmlSerializer serializer1 = new System.Xml.Serialization.XmlSerializer(typeof(FilterbankOutput));
             System.IO.StreamWriter sw = new System.IO.StreamWriter(String.Format(@"{0}_FB.xml", voice), false, new System.Text.UTF8Encoding(false));
             serializer1.Serialize(sw, od);
             sw.Close();
-
         }
 
         private void button3_Click(object sender, EventArgs e)
@@ -783,11 +741,9 @@ namespace WindowsFormsApplication1
             System.IO.StreamWriter sw = new System.IO.StreamWriter(String.Format(@"D:\Workspace\{0}.xml", this.textBoxCombindFile.Text), false, new System.Text.UTF8Encoding(false));
             serializer1.Serialize(sw, MFCCDataList);
             sw.Close();
-
-
-
         }
     }
+    #endregion
 
     public class FilterbankOutput
     {
