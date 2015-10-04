@@ -164,12 +164,12 @@ namespace WindowsFormsApplication1
             private double[] out_Array;
 
 
-            public FilteredWaveStream(int sampleRate, double[] data)
+            public FilteredWaveStream(int sampleRate, double[] data, int ofs)
             {
                 waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 1);
-                Gain = 1;
+                Gain = 5;
                 out_Array = data;
-                readOffset = 0;
+                readOffset = ofs;
 
                 for (int i = 0; i < out_Array.Length - 1; i++)　///////////////////////////////////// ゼロクロス位置強制
                 {
@@ -231,7 +231,7 @@ namespace WindowsFormsApplication1
             {
                 ClearAudioDevice();
                 WaveOutDevice = CreateDevice(comboBoxAudioIF.SelectedIndex);
-                outputStream = new FilteredWaveStream(sampleRate, inputSampleStream);
+                outputStream = new FilteredWaveStream(sampleRate, inputSampleStream, offset);
                 WaveOutDevice.Init(new SampleToWaveProvider(outputStream as ISampleProvider));
 
                 WaveOutDevice.Play();
